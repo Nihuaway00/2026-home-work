@@ -21,6 +21,9 @@ public class PopovIgorKVDaoPersistent implements Dao<byte[]> {
     @Override
     public byte[] get(String key) throws IOException {
         this.checkActive();
+        if (key == null) {
+            throw new IllegalArgumentException("Key cannot be null");
+        }
         final Path file = this.storageDir.resolve(key);
         if (!Files.exists(file)) {
             return null;
@@ -45,6 +48,9 @@ public class PopovIgorKVDaoPersistent implements Dao<byte[]> {
     @Override
     public void delete(String key) throws IOException {
         this.checkActive();
+        if (key == null) {
+            throw new IllegalArgumentException("Key cannot be null");
+        }
         final Path file = this.storageDir.resolve(key);
         Files.deleteIfExists(file);
     }
