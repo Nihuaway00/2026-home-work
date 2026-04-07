@@ -37,10 +37,13 @@ public class NesterukiaFileSystemKVDao implements Dao<byte[]> {
     @Override
     public byte[] get(String key) throws NoSuchElementException, IllegalArgumentException, IOException {
         validateKey(key);
-
         Path file = getFilePath(key, storageDir);
-        ReentrantReadWriteLock lock = getLock(key);
 
+        if (!Files.exists(file)) {
+            throw new NoSuchElementException();
+        }
+
+        ReentrantReadWriteLock lock = getLock(key);
         lock.readLock().lock();
         try {
             return FileSystemUtils.readFileContent(file);
@@ -77,8 +80,8 @@ public class NesterukiaFileSystemKVDao implements Dao<byte[]> {
 
         lock.writeLock().lock();
         try {
-            Files.deleteIfExists(file);
             keyLocks.remove(key);
+            Files.deleteIfExists(file);
         } finally {
             lock.writeLock().unlock();
         }
