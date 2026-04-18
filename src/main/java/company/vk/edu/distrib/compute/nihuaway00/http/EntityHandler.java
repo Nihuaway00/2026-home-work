@@ -2,7 +2,6 @@ package company.vk.edu.distrib.compute.nihuaway00.http;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.NodeInfo;
 import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardRouter;
 import company.vk.edu.distrib.compute.nihuaway00.storage.EntityDao;
 
@@ -36,17 +35,20 @@ public class EntityHandler implements HttpHandler {
 
         try (exchange) {
             try {
-                NodeInfo targetNode = shardRouter.getNodeEndpoint(id);
+                String targetNodeEndpoint = shardRouter.getResponsibleNode(id);
 
-                if (!shardRouter.isLocalNode(targetNode.getEndpoint())) {
+                if (!shardRouter.isLocalNode(targetNodeEndpoint)) {
                     try {
-                        shardRouter.proxyRequest(exchange, targetNode.getEndpoint());
+                        shardRouter.proxyRequest(exchange, targetNodeEndpoint);
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt(); //восстанавливаем флаг isInterrupted, иначе будут проблемы с graceful shutdown
-                        throw new RuntimeException(e);
+                        //восстанавливаем флаг isInterrupted, иначе будут проблемы с graceful shutdown
+                        Thread.currentThread().interrupt();
+                        HttpUtils.sendError(exchange, 503, "Request interrupted");
+                        return;
                     }
                     return;
                 }
+
                 switch (method) {
                     case "GET" -> {
                         handleGetEntity(exchange, id);

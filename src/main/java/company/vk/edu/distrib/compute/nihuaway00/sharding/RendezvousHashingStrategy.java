@@ -4,21 +4,19 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.*;
 
 public class RendezvousHashingStrategy implements ShardingStrategy {
-    private CopyOnWriteArrayList<NodeInfo> nodes;
+    private final Map<String, NodeInfo> nodes;
 
-    public RendezvousHashingStrategy(CopyOnWriteArrayList<NodeInfo> nodes) {
+    public RendezvousHashingStrategy(Map<String, NodeInfo> nodes) {
         this.nodes = nodes;
     }
 
     @Override
     public NodeInfo getResponsibleNode(String key) {
-        Optional<NodeInfo> targetNode = nodes.stream()
+        Optional<NodeInfo> targetNode = nodes.values().stream()
+                .filter(NodeInfo::isEnabled)
                 .map(n -> Map.entry(n, computeHash(key, n.getEndpoint())))
                 .max(Comparator.comparingLong(Map.Entry::getValue))
                 .map(Map.Entry::getKey);
@@ -28,6 +26,21 @@ public class RendezvousHashingStrategy implements ShardingStrategy {
         }
 
         return targetNode.get();
+    }
+
+    @Override
+    public void enableNode(String endpoint) {
+        nodes.get(endpoint).enable();
+    }
+
+    @Override
+    public void disableNode(String endpoint) {
+        nodes.get(endpoint).disable();
+    }
+
+    @Override
+    public List<String> getEndpoints() {
+        return nodes.values().stream().map(NodeInfo::getEndpoint).toList();
     }
 
     private long computeHash(String key, String endpoint) {

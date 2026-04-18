@@ -2,38 +2,42 @@ package company.vk.edu.distrib.compute.nihuaway00;
 
 import company.vk.edu.distrib.compute.KVCluster;
 import company.vk.edu.distrib.compute.KVClusterFactory;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ConsistentHashingStrategy;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.NodeInfo;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.RendezvousHashingStrategy;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardingStrategy;
+import company.vk.edu.distrib.compute.dummy.DummyKVService;
+import company.vk.edu.distrib.compute.nihuaway00.sharding.*;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.http.HttpClient;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class NihuawayKVClusterFactory extends KVClusterFactory {
-    public NihuawayKVClusterFactory() {
-    }
+    private static final Logger log = LoggerFactory.getLogger(DummyKVService.class);
 
     @Override
     protected KVCluster doCreate(List<Integer> ports) {
-        var log = LoggerFactory.getLogger("server");
-        CopyOnWriteArrayList<NodeInfo> nodes = new CopyOnWriteArrayList<>(ports.stream()
-                .map(p -> new NodeInfo("http://localhost:" + p, p))
-                .toList());
+        Map<String, NodeInfo> nodes = new ConcurrentHashMap<>();
+        ports.stream()
+                .map(this::buildEndpoint)
+                .forEach(endpoint -> nodes.put(endpoint, new NodeInfo(endpoint)));
 
         String val = loadStrategy();
-        log.info("Using strategy: {}", val);
+        if (log.isInfoEnabled()) {
+            log.info("Using strategy: {}", val);
+        }
 
-        ShardingStrategy strategy = switch (val) {
-            case "rendezvous" -> new RendezvousHashingStrategy(nodes);
-            default -> new ConsistentHashingStrategy(nodes, 5);
-        };
+        HttpClient httpClient = HttpClient.newHttpClient();
 
+        ShardingStrategy strategy = "rendezvous".equals(val)
+                ? new RendezvousHashingStrategy(nodes)
+                : new ConsistentHashingStrategy(nodes, 5);
 
-        NihuawayKVServiceFactory serviceFactory = new NihuawayKVServiceFactory(strategy);
-        return new NihuawayKVCluster(nodes, serviceFactory);
+        NihuawayKVServiceFactory serviceFactory = new NihuawayKVServiceFactory(strategy, httpClient);
+
+        return new NihuawayKVCluster(strategy, serviceFactory);
     }
 
     private String loadStrategy() {
@@ -43,9 +47,16 @@ public class NihuawayKVClusterFactory extends KVClusterFactory {
                 props.load(is);
                 return props.getProperty("strategy", "consistent");
             }
-        } catch (Exception _) {
+        } catch (NullPointerException | IOException e) {
+            if (log.isErrorEnabled()) {
+                log.error("NihuawayKVClusterFactory loadStrategy error", e);
+            }
         }
 
         return "consistent";
+    }
+
+    private String buildEndpoint(int port) {
+        return "http://localhost:" + port;
     }
 }
