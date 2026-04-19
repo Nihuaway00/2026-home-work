@@ -8,6 +8,8 @@ import java.util.*;
 
 public class RendezvousHashingStrategy implements ShardingStrategy {
     private final Map<String, NodeInfo> nodes;
+    private static final ThreadLocal<MessageDigest> MD =
+            ThreadLocal.withInitial(RendezvousHashingStrategy::createMD5);
 
     public RendezvousHashingStrategy(Map<String, NodeInfo> nodes) {
         this.nodes = nodes;
@@ -44,12 +46,15 @@ public class RendezvousHashingStrategy implements ShardingStrategy {
     }
 
     private long computeHash(String key, String endpoint) {
+        byte[] hash = MD.get().digest((key + endpoint).getBytes(StandardCharsets.UTF_8));
+        return ByteBuffer.wrap(hash).getLong();
+    }
+
+    private static MessageDigest createMD5() {
         try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hash = md.digest((key + endpoint).getBytes(StandardCharsets.UTF_8));
-            return ByteBuffer.wrap(hash).getLong();
+            return MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e); // MD5 всегда есть в JVM
+            throw new RuntimeException(e);
         }
     }
 }

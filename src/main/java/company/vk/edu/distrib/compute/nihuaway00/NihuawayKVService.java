@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.util.concurrent.Executors;
 
 public class NihuawayKVService implements company.vk.edu.distrib.compute.KVService {
     private static final Logger log = LoggerFactory.getLogger(NihuawayKVService.class);
@@ -29,6 +30,7 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.KVServi
         try {
             InetSocketAddress addr = new InetSocketAddress(port);
             server = HttpServer.create(addr, 0);
+            server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
             registerContexts();
             server.start();
         } catch (Exception e) {

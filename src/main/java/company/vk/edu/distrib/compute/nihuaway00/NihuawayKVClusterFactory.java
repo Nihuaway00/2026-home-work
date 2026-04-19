@@ -33,7 +33,7 @@ public class NihuawayKVClusterFactory extends KVClusterFactory {
 
         ShardingStrategy strategy = "rendezvous".equals(val)
                 ? new RendezvousHashingStrategy(nodes)
-                : new ConsistentHashingStrategy(nodes, 5);
+                : new ConsistentHashingStrategy(nodes, 50);
 
         NihuawayKVServiceFactory serviceFactory = new NihuawayKVServiceFactory(strategy, httpClient);
 
