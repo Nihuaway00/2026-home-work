@@ -99,7 +99,7 @@ public class ReplicaManager {
     private List<VersionedEntry> readFromReplicas(String key, List<ReplicaNode> replicas, int ack) {
         return executeOnReplicas(key, replicas, ack, dao -> {
             VersionedEntry versioned = dao.getVersioned(key);
-            return versioned != null ? versioned : VersionedEntry.absent();
+            return versioned != null ? versioned : VersionedEntry.getAbsentInstance();
         });
     }
 
@@ -137,13 +137,13 @@ public class ReplicaManager {
             String key,
             DaoOperation<T> operation
     ) {
-        EntityDao dao = replica.dao();
+        EntityDao dao = replica.getDao();
         try (dao) {
             return operation.execute(dao);
         } catch (IOException e) {
             if (log.isWarnEnabled()) {
                 log.warn("Replica {} operation failed for key={}: {}",
-                        replica.nodeId(), key, e.getMessage());
+                        replica.getNodeId(), key, e.getMessage());
             }
             return null;
         }

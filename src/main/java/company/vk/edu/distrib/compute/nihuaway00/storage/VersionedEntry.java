@@ -9,18 +9,18 @@ public class VersionedEntry {
     private long timestamp;
     private boolean tombstone;
     private byte[] data;
-    private static final VersionedEntry ABSENT = new VersionedEntry(0L, false, null);
+    private static final VersionedEntry ABSENT = new VersionedEntry(0L, true, new byte[0]);
 
     public VersionedEntry(byte[] data) {
         actualizeTimestamp();
         this.tombstone = false;
-        this.data = data == null ? null : data.clone();
+        this.data = data == null ? new byte[0] : data.clone();
     }
 
     private VersionedEntry(long timestamp, boolean tombstone, byte[] data) {
         this.timestamp = timestamp;
         this.tombstone = tombstone;
-        this.data = data == null ? null : data.clone();
+        this.data = data == null ? new byte[0] : data.clone();
     }
 
     public byte[] serialize() {
@@ -38,10 +38,10 @@ public class VersionedEntry {
         boolean tombstone = buf.get() == 1;
         byte[] data = new byte[buf.remaining()];
         buf.get(data);
-        return new VersionedEntry(timestamp, tombstone, tombstone ? null : data);
+        return new VersionedEntry(timestamp, tombstone, tombstone ? new byte[0] : data);
     }
 
-    public static VersionedEntry absent() {
+    public static VersionedEntry getAbsentInstance() {
         return ABSENT;
     }
 
@@ -70,7 +70,10 @@ public class VersionedEntry {
     }
 
     public void setData(byte[] data) {
+        if (data == null) {
+            throw new IllegalArgumentException("data cannot be null");
+        }
         actualizeTimestamp();
-        this.data = data == null ? null : data.clone();
+        this.data = data.clone();
     }
 }

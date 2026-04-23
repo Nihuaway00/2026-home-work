@@ -34,41 +34,18 @@ public class EntityHandler implements HttpHandler {
             return;
         }
 
-        int ack;
-        try {
-            ack = Integer.parseInt(params.get("ack"));
-        } catch (NumberFormatException e) {
-            ack = 1;
-        }
+        int ack = parseAck(params);
 
         try (exchange) {
             try {
                 String targetNodeEndpoint = shardRouter.getResponsibleNode(id);
 
-                if (!shardRouter.isLocalNode(targetNodeEndpoint)) {
-                    try {
-                        shardRouter.proxyRequest(exchange, targetNodeEndpoint);
-                    } catch (InterruptedException e) {
-                        //восстанавливаем флаг isInterrupted, иначе будут проблемы с graceful shutdown
-                        Thread.currentThread().interrupt();
-                        HttpUtils.sendError(exchange, 503, "Request interrupted");
-                        return;
-                    }
+                boolean requestIsProxied = proxyIfNeeded(exchange, targetNodeEndpoint);
+                if (requestIsProxied) {
                     return;
                 }
 
-                switch (method) {
-                    case "GET" -> {
-                        handleGetEntity(exchange, id, ack);
-                    }
-                    case "PUT" -> {
-                        handlePutEntity(exchange, id, ack);
-                    }
-                    case "DELETE" -> {
-                        handleDeleteEntity(exchange, id, ack);
-                    }
-                    default -> HttpUtils.sendError(exchange, 405, "Method not allowed");
-                }
+                dispatchByMethod(exchange, method, id, ack);
             } catch (NoSuchElementException err) {
                 HttpUtils.sendError(exchange, 404, err.getMessage());
             } catch (IllegalArgumentException err) {
@@ -78,6 +55,38 @@ public class EntityHandler implements HttpHandler {
             } catch (Exception err) {
                 HttpUtils.sendError(exchange, 503, err.getMessage());
             }
+        }
+    }
+
+    private int parseAck(Map<String, String> params) {
+        try {
+            return Integer.parseInt(params.get("ack"));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    private boolean proxyIfNeeded(HttpExchange exchange, String targetNodeEndpoint) throws IOException {
+        if (shardRouter.isLocalNode(targetNodeEndpoint)) {
+            return false;
+        }
+
+        try {
+            shardRouter.proxyRequest(exchange, targetNodeEndpoint);
+        } catch (InterruptedException e) {
+            //восстанавливаем флаг isInterrupted, иначе будут проблемы с graceful shutdown
+            Thread.currentThread().interrupt();
+            HttpUtils.sendError(exchange, 503, "Request interrupted");
+        }
+        return true;
+    }
+
+    private void dispatchByMethod(HttpExchange exchange, String method, String id, int ack) throws IOException {
+        switch (method) {
+            case "GET" -> handleGetEntity(exchange, id, ack);
+            case "PUT" -> handlePutEntity(exchange, id, ack);
+            case "DELETE" -> handleDeleteEntity(exchange, id, ack);
+            default -> HttpUtils.sendError(exchange, 405, "Method not allowed");
         }
     }
 

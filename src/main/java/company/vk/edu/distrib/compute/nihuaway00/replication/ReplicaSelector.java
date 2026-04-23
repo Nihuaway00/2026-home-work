@@ -13,7 +13,7 @@ public class ReplicaSelector {
 
     public List<ReplicaNode> select(String key, List<ReplicaNode> replicas) {
         return replicas.stream()
-                .sorted(Comparator.comparingLong(r -> -score(key, r.nodeId())))
+                .sorted(Comparator.comparingLong(r -> -score(key, r.getNodeId())))
                 .toList();
     }
 
