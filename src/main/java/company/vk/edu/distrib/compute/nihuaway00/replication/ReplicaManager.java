@@ -97,37 +97,80 @@ public class ReplicaManager {
     }
 
     private List<VersionedEntry> readFromReplicas(String key, List<ReplicaNode> replicas, int ack) {
-        var ecs = new ExecutorCompletionService<VersionedEntry>(EXECUTOR);
-        replicas.forEach(r -> ecs.submit(() -> {
-            EntityDao dao = r.dao();
-            try (dao) {
-                VersionedEntry versioned = dao.getVersioned(key);
-                return versioned != null ? versioned :
-                        VersionedEntry.absent();
-            } catch (IOException e) {
-                if (log.isWarnEnabled()) {
-                    log.warn("Replica {} failed GET {}: {}",
-                            r.nodeId(), key, e.getMessage());
-                }
-                return null;
-            }
-        }));
+        return executeOnReplicas(key, replicas, ack, dao -> {
+            VersionedEntry versioned = dao.getVersioned(key);
+            return versioned != null ? versioned : VersionedEntry.absent();
+        });
+    }
 
-        List<VersionedEntry> results = new ArrayList<>();
-        for (int i = 0; i < replicas.size() && results.size() < ack;
-             i++) {
+    private List<Boolean> writeToReplicas(String key, byte[] value,
+                                          List<ReplicaNode> replicas, int ack) {
+        return executeOnReplicas(key, replicas, ack, dao -> {
+            dao.upsert(key, value);
+            return true;
+        });
+    }
+
+    private List<Boolean> deleteToReplicas(String key,
+                                           List<ReplicaNode> replicas, int ack) {
+        return executeOnReplicas(key, replicas, ack, dao -> {
+            dao.delete(key);
+            return true;
+        });
+    }
+
+    private <T> List<T> executeOnReplicas(
+            String key,
+            List<ReplicaNode> replicas,
+            int ack,
+            DaoOperation<T> operation
+    ) {
+        var ecs = new ExecutorCompletionService<T>(EXECUTOR);
+        replicas.forEach(replica -> ecs.submit(
+                () -> executeReplicaOperation(replica, key, operation))
+        );
+        return collectSuccessfulResults(ecs, replicas.size(), ack);
+    }
+
+    private <T> T executeReplicaOperation(
+            ReplicaNode replica,
+            String key,
+            DaoOperation<T> operation
+    ) {
+        EntityDao dao = replica.dao();
+        try (dao) {
+            return operation.execute(dao);
+        } catch (IOException e) {
+            if (log.isWarnEnabled()) {
+                log.warn("Replica {} operation failed for key={}: {}",
+                        replica.nodeId(), key, e.getMessage());
+            }
+            return null;
+        }
+    }
+
+    private <T> List<T> collectSuccessfulResults(
+            ExecutorCompletionService<T> ecs,
+            int replicasCount,
+            int ack
+    ) {
+        List<T> results = new ArrayList<>();
+        for (int i = 0; i < replicasCount && results.size() < ack; i++) {
             try {
-                Future<VersionedEntry> f = ecs.poll(1,
-                        TimeUnit.SECONDS);
-                if (f == null) break; // общий таймаут истёк
-                VersionedEntry entry = f.get();
-                if (entry != null) results.add(entry);
+                Future<T> future = ecs.poll(1, TimeUnit.SECONDS);
+                if (future == null) {
+                    break;
+                }
+                T value = future.get();
+                if (value != null) {
+                    results.add(value);
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
                 if (log.isWarnEnabled()) {
-                    log.warn("Unexpected error polling replica result: {}",
+                    log.warn("Unexpected error while polling replica result: {}",
                             e.getMessage());
                 }
             }
@@ -135,77 +178,8 @@ public class ReplicaManager {
         return results;
     }
 
-    private List<Boolean> writeToReplicas(String key, byte[] value,
-                                          List<ReplicaNode> replicas, int ack) {
-        var ecs = new ExecutorCompletionService<Boolean>(EXECUTOR);
-
-        replicas.forEach(r -> ecs.submit(() -> {
-            EntityDao dao = r.dao();
-            try (dao) {
-                dao.upsert(key, value);
-                return true;
-            } catch (IOException e) {
-                if (log.isWarnEnabled()) {
-                    log.warn("Replica {} failed PUT {}: {}", r.nodeId(), key, e.getMessage());
-                }
-                return null;
-            }
-        }));
-
-        List<Boolean> results = new ArrayList<>();
-        for (int i = 0; i < replicas.size() && results.size() < ack;
-             i++) {
-            try {
-                Future<Boolean> f = ecs.poll(1, TimeUnit.SECONDS);
-                if (f == null) break;
-                Boolean val = f.get();
-                if (val != null) results.add(val);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Exception e) {
-                if (log.isWarnEnabled()) {
-                    log.warn("Unexpected error polling write result: {}", e.getMessage());
-                }
-            }
-        }
-        return results;
-    }
-
-    private List<Boolean> deleteToReplicas(String key,
-                                           List<ReplicaNode> replicas, int ack) {
-        var ecs = new ExecutorCompletionService<Boolean>(EXECUTOR);
-
-        replicas.forEach(r -> ecs.submit(() -> {
-            EntityDao dao = r.dao();
-            try (dao) {
-                dao.delete(key);
-                return true;
-            } catch (IOException e) {
-                if (log.isWarnEnabled()) {
-                    log.warn("Replica {} failed DELETE {}: {}", r.nodeId(), key, e.getMessage());
-                }
-                return null;
-            }
-        }));
-
-        List<Boolean> results = new ArrayList<>();
-        for (int i = 0; i < replicas.size() && results.size() < ack;
-             i++) {
-            try {
-                Future<Boolean> f = ecs.poll(1, TimeUnit.SECONDS);
-                if (f == null) break;
-                Boolean val = f.get();
-                if (val != null) results.add(val);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Exception e) {
-                if (log.isWarnEnabled()) {
-                    log.warn("Unexpected error polling delete result: {}", e.getMessage());
-                }
-            }
-        }
-        return results;
+    @FunctionalInterface
+    private interface DaoOperation<T> {
+        T execute(EntityDao dao) throws IOException;
     }
 }
