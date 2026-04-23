@@ -27,11 +27,11 @@ public class ReplicaNode {
         this.enabled.set(true);
     }
 
-    public EntityDao dao() {
+    public EntityDao getDao() {
         return dao;
     }
 
-    public int nodeId() {
+    public int getNodeId() {
         return nodeId;
     }
 }
