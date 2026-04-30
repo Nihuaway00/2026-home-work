@@ -49,7 +49,8 @@ dependencies {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+//        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+        artifact = "com.google.protobuf:protoc:3.4.0:osx-x86_64"
     }
     plugins {
         id("grpc") {

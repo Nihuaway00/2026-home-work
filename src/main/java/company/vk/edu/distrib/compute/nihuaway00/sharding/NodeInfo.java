@@ -4,14 +4,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NodeInfo {
     private final String endpoint;
+    private final String grpcEndpoint;
     private final AtomicBoolean alive = new AtomicBoolean(false);
 
-    public NodeInfo(String endpoint) {
+    public NodeInfo(String endpoint, String grpcEndpoint) {
         this.endpoint = endpoint;
+        this.grpcEndpoint = grpcEndpoint;
     }
 
     public String getEndpoint() {
         return endpoint;
+    }
+
+    public String getGrpcEndpoint() {
+        return grpcEndpoint;
     }
 
     public boolean isEnabled() {

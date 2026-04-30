@@ -2,11 +2,14 @@ package company.vk.edu.distrib.compute.nihuaway00;
 
 import company.vk.edu.distrib.compute.KVCluster;
 import company.vk.edu.distrib.compute.KVClusterFactory;
+import company.vk.edu.distrib.compute.nihuaway00.proto.ReactorKVServiceGrpc;
 import company.vk.edu.distrib.compute.nihuaway00.sharding.*;
+import io.grpc.Grpc;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.ManagedChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,9 +20,16 @@ public class NihuawayKVClusterFactory extends KVClusterFactory {
     @Override
     protected KVCluster doCreate(List<Integer> ports) {
         Map<String, NodeInfo> nodes = new ConcurrentHashMap<>();
-        ports.stream().map(this::buildEndpoint).forEach(endpoint -> nodes.put(endpoint, new NodeInfo(endpoint)));
+        Map<String, ReactorKVServiceGrpc.ReactorKVServiceStub> stubs = new ConcurrentHashMap<>();
 
-        HttpClient httpClient = HttpClient.newHttpClient();
+        ports.forEach(port -> {
+            String endpoint = "http://localhost:" + (port);
+            String grpcEndpoint = "localhost:" + (port + 1);
+            ManagedChannel channel = Grpc.newChannelBuilder(grpcEndpoint, InsecureChannelCredentials.create()).build();
+            ReactorKVServiceGrpc.ReactorKVServiceStub stub = ReactorKVServiceGrpc.newReactorStub(channel);
+            stubs.put(grpcEndpoint, stub);
+            nodes.put(endpoint, new NodeInfo(endpoint, grpcEndpoint));
+        });
 
         String shardingStrategyProp = Config.strategy();
         if (log.isInfoEnabled()) {
@@ -31,12 +41,8 @@ public class NihuawayKVClusterFactory extends KVClusterFactory {
 
         int replicaCountProps = Config.replicas();
 
-        NihuawayKVServiceFactory serviceFactory = new NihuawayKVServiceFactory(strategy, httpClient, replicaCountProps);
+        NihuawayKVServiceFactory serviceFactory = new NihuawayKVServiceFactory(strategy, replicaCountProps, stubs);
 
         return new NihuawayKVCluster(strategy, serviceFactory);
-    }
-
-    private String buildEndpoint(int port) {
-        return "http://localhost:" + port;
     }
 }

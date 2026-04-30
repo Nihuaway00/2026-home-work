@@ -5,7 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 
 public interface ShardRouter {
-    void proxyRequest(HttpExchange exchange, String targetNodeEndpoint) throws IOException, InterruptedException;
+    <T> T proxyRequest(String targetNodeEndpoint, ShardOperation<T> operation);
 
     String getResponsibleNode(String key);
 
