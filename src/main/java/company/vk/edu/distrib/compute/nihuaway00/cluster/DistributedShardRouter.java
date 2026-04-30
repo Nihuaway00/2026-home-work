@@ -3,8 +3,6 @@ package company.vk.edu.distrib.compute.nihuaway00.cluster;
 import company.vk.edu.distrib.compute.nihuaway00.proto.ReactorKVServiceGrpc;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.GrpcChannelRegistry;
 
-import java.net.URI;
-
 public class DistributedShardRouter implements ShardRouter {
     private final String currentNodeEndpoint;
     private final String currentNodeGrpcEndpoint;
@@ -13,11 +11,12 @@ public class DistributedShardRouter implements ShardRouter {
 
     public DistributedShardRouter(
             String currentNodeEndpoint,
+            String currentNodeGrpcEndpoint,
             ShardingStrategy strategy,
             GrpcChannelRegistry channelRegistry
     ) {
         this.currentNodeEndpoint = currentNodeEndpoint;
-        this.currentNodeGrpcEndpoint = toGrpcEndpoint(currentNodeEndpoint);
+        this.currentNodeGrpcEndpoint = currentNodeGrpcEndpoint;
         this.shardingStrategy = strategy;
         this.channelRegistry = channelRegistry;
     }
@@ -36,10 +35,5 @@ public class DistributedShardRouter implements ShardRouter {
     @Override
     public boolean isLocalNode(String endpoint) {
         return currentNodeEndpoint.equals(endpoint) || currentNodeGrpcEndpoint.equals(endpoint);
-    }
-
-    private static String toGrpcEndpoint(String endpoint) {
-        URI uri = URI.create(endpoint);
-        return uri.getHost() + ":" + (uri.getPort() + 1);
     }
 }
