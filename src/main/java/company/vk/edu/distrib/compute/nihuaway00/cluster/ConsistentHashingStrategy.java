@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.nihuaway00.sharding;
+package company.vk.edu.distrib.compute.nihuaway00.cluster;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

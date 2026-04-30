@@ -1,5 +1,6 @@
 package company.vk.edu.distrib.compute.nihuaway00.transport.grpc;
 
+import com.google.protobuf.ByteString;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.proto.Key;
 import company.vk.edu.distrib.compute.nihuaway00.proto.KeyValue;
@@ -60,7 +61,12 @@ public class InternalGrpcService extends ReactorKVServiceGrpc.KVServiceImplBase 
     @Override
     public Mono<Response> get(Key request) {
         try {
-            commandService.handleGetEntity(request.getKey(), request.getAck());
+            byte[] data = commandService.handleGetEntity(request.getKey(),
+                    request.getAck());
+            return Mono.just(Response.newBuilder()
+                    .setStatus(200)
+                    .setValue(ByteString.copyFrom(data))
+                    .build());
         } catch (NoSuchElementException e) {
             return Mono.error(Status.NOT_FOUND.asRuntimeException());
         } catch (IllegalArgumentException e) {

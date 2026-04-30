@@ -1,6 +1,6 @@
 package company.vk.edu.distrib.compute;
 
-import company.vk.edu.distrib.compute.nihuaway00.NihuawayKVClusterFactory;
+import company.vk.edu.distrib.compute.nihuaway00.bootstrap.NihuawayKVClusterFactory;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;

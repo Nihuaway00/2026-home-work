@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.nihuaway00.http;
+package company.vk.edu.distrib.compute.nihuaway00.transport.http;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -39,7 +39,6 @@ public class EntityHandler implements HttpHandler {
 
         try (exchange) {
             try {
-//                String targetNodeEndpoint = KVCommandService.shardRouter.getResponsibleNode(id);
                 dispatchByMethod(exchange, method, id, ack);
             } catch (NoSuchElementException err) {
                 HttpUtils.sendError(exchange, 404, err.getMessage());
@@ -62,7 +61,6 @@ public class EntityHandler implements HttpHandler {
     }
 
     private void dispatchByMethod(HttpExchange exchange, String method, String id, int ack) throws IOException {
-//        boolean isLocal = KVCommandService.shardRouter.isLocalNode(targetNodeEndpoint);
         switch (method) {
             case "GET" -> {
                 byte[] data = KVCommandService.handleGetEntity(id, ack);

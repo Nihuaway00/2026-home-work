@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.nihuaway00.sharding;
+package company.vk.edu.distrib.compute.nihuaway00.cluster;
 
 public class LocalShardRouter implements ShardRouter {
     private final String currentNodeEndpoint;

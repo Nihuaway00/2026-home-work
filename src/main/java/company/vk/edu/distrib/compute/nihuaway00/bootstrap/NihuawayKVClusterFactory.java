@@ -1,9 +1,11 @@
-package company.vk.edu.distrib.compute.nihuaway00;
+package company.vk.edu.distrib.compute.nihuaway00.bootstrap;
 
 import company.vk.edu.distrib.compute.KVCluster;
 import company.vk.edu.distrib.compute.KVClusterFactory;
+import company.vk.edu.distrib.compute.nihuaway00.Config;
+import company.vk.edu.distrib.compute.nihuaway00.NihuawayKVCluster;
 import company.vk.edu.distrib.compute.nihuaway00.proto.ReactorKVServiceGrpc;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.*;
+import company.vk.edu.distrib.compute.nihuaway00.cluster.*;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
