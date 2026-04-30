@@ -15,9 +15,6 @@ public class GrpcChannelRegistry implements AutoCloseable {
     private final Map<String, ManagedChannel> channels = new ConcurrentHashMap<>();
     private final Map<String, ReactorKVServiceGrpc.ReactorKVServiceStub> stubs = new ConcurrentHashMap<>();
 
-    public GrpcChannelRegistry() {
-    }
-
     public ReactorKVServiceGrpc.ReactorKVServiceStub getStub(String grpcEndpoint) {
         return stubs.computeIfAbsent(grpcEndpoint, endpoint -> {
             ManagedChannel channel = Grpc.newChannelBuilder(endpoint, InsecureChannelCredentials.create()).build();

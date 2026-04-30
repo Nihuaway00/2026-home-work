@@ -8,10 +8,6 @@ import java.io.OutputStream;
 
 public class StatusHttpHandler implements HttpHandler {
 
-    public StatusHttpHandler() {
-
-    }
-
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         byte[] body = "{\"status\": \"ok\"}".getBytes();
