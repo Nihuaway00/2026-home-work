@@ -2,9 +2,10 @@ package company.vk.edu.distrib.compute.nihuaway00.http;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.replication.InsufficientReplicasException;
-import company.vk.edu.distrib.compute.nihuaway00.replication.ReplicaManager;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardRouter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,12 +15,12 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class EntityHandler implements HttpHandler {
-    private final ShardRouter shardRouter;
-    private final ReplicaManager replicaManager;
+    private static final Logger log = LoggerFactory.getLogger(EntityHandler.class);
+    private final KVCommandService KVCommandService;
 
-    public EntityHandler(ReplicaManager replicaManager, ShardRouter shardRouter) {
-        this.replicaManager = replicaManager;
-        this.shardRouter = shardRouter;
+
+    public EntityHandler(KVCommandService kvCommandService) {
+        KVCommandService = kvCommandService;
     }
 
     @Override
@@ -38,13 +39,7 @@ public class EntityHandler implements HttpHandler {
 
         try (exchange) {
             try {
-                String targetNodeEndpoint = shardRouter.getResponsibleNode(id);
-
-                boolean requestIsProxied = proxyIfNeeded(exchange, targetNodeEndpoint);
-                if (requestIsProxied) {
-                    return;
-                }
-
+//                String targetNodeEndpoint = KVCommandService.shardRouter.getResponsibleNode(id);
                 dispatchByMethod(exchange, method, id, ack);
             } catch (NoSuchElementException err) {
                 HttpUtils.sendError(exchange, 404, err.getMessage());
@@ -66,57 +61,29 @@ public class EntityHandler implements HttpHandler {
         }
     }
 
-    private boolean proxyIfNeeded(HttpExchange exchange, String targetNodeEndpoint) throws IOException {
-        if (shardRouter.isLocalNode(targetNodeEndpoint)) {
-            return false;
-        }
-
-        try {
-            shardRouter.proxyRequest(exchange, targetNodeEndpoint);
-        } catch (InterruptedException e) {
-            //восстанавливаем флаг isInterrupted, иначе будут проблемы с graceful shutdown
-            Thread.currentThread().interrupt();
-            HttpUtils.sendError(exchange, 503, "Request interrupted");
-        }
-        return true;
-    }
-
     private void dispatchByMethod(HttpExchange exchange, String method, String id, int ack) throws IOException {
+//        boolean isLocal = KVCommandService.shardRouter.isLocalNode(targetNodeEndpoint);
         switch (method) {
-            case "GET" -> handleGetEntity(exchange, id, ack);
-            case "PUT" -> handlePutEntity(exchange, id, ack);
-            case "DELETE" -> handleDeleteEntity(exchange, id, ack);
+            case "GET" -> {
+                byte[] data = KVCommandService.handleGetEntity(id, ack);
+                exchange.sendResponseHeaders(200, data.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(data);
+                }
+            }
+            case "PUT" -> {
+                try (InputStream is = exchange.getRequestBody()) {
+                    byte[] data = is.readAllBytes();
+                    KVCommandService.handlePutEntity(id, data, ack);
+                    exchange.sendResponseHeaders(201, -1);
+                }
+            }
+            case "DELETE" -> {
+                KVCommandService.handleDeleteEntity(id, ack);
+                exchange.sendResponseHeaders(202, -1);
+                exchange.close();
+            }
             default -> HttpUtils.sendError(exchange, 405, "Method not allowed");
         }
-    }
-
-    public void handleGetEntity(HttpExchange exchange, String id, int ack)
-            throws IOException, NoSuchElementException, IllegalArgumentException {
-        byte[] data = replicaManager.get(id, ack);
-
-        if (data == null) {
-            throw new NoSuchElementException();
-        }
-
-        exchange.sendResponseHeaders(200, data.length);
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(data);
-        }
-    }
-
-    public void handlePutEntity(HttpExchange exchange, String id, int ack)
-            throws IOException, IllegalArgumentException {
-
-        try (InputStream is = exchange.getRequestBody()) {
-            var data = is.readAllBytes();
-            replicaManager.put(id, data, ack);
-            exchange.sendResponseHeaders(201, -1);
-        }
-    }
-
-    public void handleDeleteEntity(HttpExchange exchange, String id, int ack)
-            throws IOException, IllegalArgumentException {
-        replicaManager.delete(id, ack);
-        exchange.sendResponseHeaders(202, -1);
     }
 }

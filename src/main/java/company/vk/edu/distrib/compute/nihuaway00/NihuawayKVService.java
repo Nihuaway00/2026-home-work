@@ -1,10 +1,12 @@
 package company.vk.edu.distrib.compute.nihuaway00;
 
 import com.sun.net.httpserver.HttpServer;
+import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.http.EntityHandler;
 import company.vk.edu.distrib.compute.nihuaway00.http.PingHandler;
 import company.vk.edu.distrib.compute.nihuaway00.replication.ReplicaManager;
 import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardRouter;
+import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,7 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
 
     private final ReplicaManager replicaManager;
     private HttpServer server;
+    private InternalGrpcService grpcServer;
     private final ShardRouter shardRouter;
     int port;
 
@@ -24,6 +27,7 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
         this.port = port;
         this.shardRouter = shardRouter;
         this.replicaManager = replicaManager;
+
     }
 
     @Override
@@ -34,6 +38,10 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
             server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
             registerContexts();
             server.start();
+            if (grpcServer.isShutdown() || grpcServer.isTerminated()) {
+                grpcServer.newGrpcServer(port + 1);
+            }
+            grpcServer.start();
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage());
@@ -43,8 +51,14 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
 
     @Override
     public void stop() {
+        if (grpcServer != null) {
+            grpcServer.shutdown();
+            grpcServer = null;
+        }
+
         if (server != null) {
             server.stop(0);
+            server = null;
         } else {
             if (log.isWarnEnabled()) {
                 log.warn("Server is not started");
@@ -53,7 +67,9 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
     }
 
     private void registerContexts() throws IOException {
-        server.createContext("/v0/entity", new EntityHandler(replicaManager, shardRouter));
+        KVCommandService commandService = new KVCommandService(replicaManager);
+        grpcServer = new InternalGrpcService(port, commandService);
+        server.createContext("/v0/entity", new EntityHandler(commandService));
         server.createContext("/v0/status", new PingHandler(replicaManager));
     }
 

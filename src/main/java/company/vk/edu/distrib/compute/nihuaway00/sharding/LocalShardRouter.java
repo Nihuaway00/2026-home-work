@@ -1,7 +1,5 @@
 package company.vk.edu.distrib.compute.nihuaway00.sharding;
 
-import com.sun.net.httpserver.HttpExchange;
-
 public class LocalShardRouter implements ShardRouter {
     private final String currentNodeEndpoint;
 
@@ -9,10 +7,10 @@ public class LocalShardRouter implements ShardRouter {
         this.currentNodeEndpoint = currentNodeEndpoint;
     }
 
+
     @Override
-    public void proxyRequest(HttpExchange exchange, String targetNodeEndpoint) {
-        // В локальном роутере не будет вызван proxy никогда,
-        // т.к. роутер всегда указывает на текущую (локальную) ноду.
+    public <T> T proxyRequest(String targetNodeEndpoint, ShardOperation<T> operation) {
+        return null;
     }
 
     @Override
