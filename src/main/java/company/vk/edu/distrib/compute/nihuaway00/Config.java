@@ -15,11 +15,11 @@ public final class Config {
     private Config() {
     }
 
-    static String strategy() {
+    public static String strategy() {
         return PROPS.getProperty("strategy", "consistent");
     }
 
-    static int replicas() {
+    public static int replicas() {
         int n = Integer.parseInt(PROPS.getProperty("replicas", "3"));
 
         if (n < MIN_REPLICAS_COUNT) {

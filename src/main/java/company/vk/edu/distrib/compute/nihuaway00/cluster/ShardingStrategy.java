@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.nihuaway00.sharding;
+package company.vk.edu.distrib.compute.nihuaway00.cluster;
 
 import java.util.List;
 

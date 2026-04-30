@@ -3,7 +3,7 @@ package company.vk.edu.distrib.compute.nihuaway00;
 import company.vk.edu.distrib.compute.KVCluster;
 import company.vk.edu.distrib.compute.KVService;
 import company.vk.edu.distrib.compute.KVServiceFactory;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardingStrategy;
+import company.vk.edu.distrib.compute.nihuaway00.cluster.ShardingStrategy;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

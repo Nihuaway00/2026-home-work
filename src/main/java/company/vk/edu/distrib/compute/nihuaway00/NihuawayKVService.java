@@ -2,10 +2,7 @@ package company.vk.edu.distrib.compute.nihuaway00;
 
 import com.sun.net.httpserver.HttpServer;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
-import company.vk.edu.distrib.compute.nihuaway00.http.EntityHandler;
-import company.vk.edu.distrib.compute.nihuaway00.http.PingHandler;
-import company.vk.edu.distrib.compute.nihuaway00.replication.ReplicaManager;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardRouter;
+import company.vk.edu.distrib.compute.nihuaway00.transport.http.EntityHandler;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,16 +14,14 @@ import java.util.concurrent.Executors;
 public class NihuawayKVService implements company.vk.edu.distrib.compute.ReplicatedService {
     private static final Logger log = LoggerFactory.getLogger(NihuawayKVService.class);
 
-    private final ReplicaManager replicaManager;
+    private final KVCommandService commandService;
     private HttpServer server;
     private InternalGrpcService grpcServer;
-    private final ShardRouter shardRouter;
     int port;
 
-    NihuawayKVService(int port, ShardRouter shardRouter, ReplicaManager replicaManager) {
+    public NihuawayKVService(int port, KVCommandService commandService) {
         this.port = port;
-        this.shardRouter = shardRouter;
-        this.replicaManager = replicaManager;
+        this.commandService = commandService;
 
     }
 
@@ -67,10 +62,9 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
     }
 
     private void registerContexts() throws IOException {
-        KVCommandService commandService = new KVCommandService(replicaManager);
         grpcServer = new InternalGrpcService(port, commandService);
         server.createContext("/v0/entity", new EntityHandler(commandService));
-        server.createContext("/v0/status", new PingHandler(replicaManager));
+//        server.createContext("/v0/status", new PingHandler(replicaManager));
     }
 
     @Override
@@ -80,16 +74,16 @@ public class NihuawayKVService implements company.vk.edu.distrib.compute.Replica
 
     @Override
     public int numberOfReplicas() {
-        return replicaManager.numberOfReplicas();
+        return commandService.replicaManager.numberOfReplicas();
     }
 
     @Override
     public void disableReplica(int nodeId) {
-        replicaManager.disableReplica(nodeId);
+        commandService.replicaManager.disableReplica(nodeId);
     }
 
     @Override
     public void enableReplica(int nodeId) {
-        replicaManager.enableReplica(nodeId);
+        commandService.replicaManager.enableReplica(nodeId);
     }
 }

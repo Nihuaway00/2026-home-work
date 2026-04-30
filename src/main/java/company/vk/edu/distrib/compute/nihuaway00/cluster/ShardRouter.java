@@ -1,8 +1,4 @@
-package company.vk.edu.distrib.compute.nihuaway00.sharding;
-
-import com.sun.net.httpserver.HttpExchange;
-
-import java.io.IOException;
+package company.vk.edu.distrib.compute.nihuaway00.cluster;
 
 public interface ShardRouter {
     <T> T proxyRequest(String targetNodeEndpoint, ShardOperation<T> operation);

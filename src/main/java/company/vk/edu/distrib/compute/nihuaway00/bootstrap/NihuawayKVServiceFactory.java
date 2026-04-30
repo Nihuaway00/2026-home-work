@@ -1,21 +1,22 @@
-package company.vk.edu.distrib.compute.nihuaway00;
+package company.vk.edu.distrib.compute.nihuaway00.bootstrap;
 
 import company.vk.edu.distrib.compute.KVService;
+import company.vk.edu.distrib.compute.nihuaway00.Config;
+import company.vk.edu.distrib.compute.nihuaway00.NihuawayKVService;
+import company.vk.edu.distrib.compute.nihuaway00.app.InternalNodeClient;
+import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.proto.ReactorKVServiceGrpc;
 import company.vk.edu.distrib.compute.nihuaway00.replication.ReplicaManager;
 import company.vk.edu.distrib.compute.nihuaway00.replication.ReplicaNode;
 import company.vk.edu.distrib.compute.nihuaway00.replication.ReplicaSelector;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.DistributedShardRouter;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.LocalShardRouter;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardRouter;
-import company.vk.edu.distrib.compute.nihuaway00.sharding.ShardingStrategy;
+import company.vk.edu.distrib.compute.nihuaway00.cluster.DistributedShardRouter;
+import company.vk.edu.distrib.compute.nihuaway00.cluster.LocalShardRouter;
+import company.vk.edu.distrib.compute.nihuaway00.cluster.ShardRouter;
+import company.vk.edu.distrib.compute.nihuaway00.cluster.ShardingStrategy;
 import company.vk.edu.distrib.compute.nihuaway00.storage.EntityDao;
-import io.grpc.Grpc;
-import io.grpc.InsecureChannelCredentials;
-import io.grpc.ManagedChannel;
+import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcClient;
 
 import java.io.IOException;
-import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,8 @@ public class NihuawayKVServiceFactory extends company.vk.edu.distrib.compute.KVS
     protected KVService doCreate(int port) throws IOException {
         ShardRouter shardRouter = buildShardRouter(port, stubs);
         ReplicaManager replicaManager = buildReplicaManager(port, replicaCount);
-
-        return new NihuawayKVService(port, shardRouter, replicaManager);
+        InternalNodeClient internalNodeClient = new InternalGrpcClient(stubs);
+        KVCommandService commandService = new KVCommandService(replicaManager, shardRouter, internalNodeClient);
+        return new NihuawayKVService(port, commandService);
     }
 }

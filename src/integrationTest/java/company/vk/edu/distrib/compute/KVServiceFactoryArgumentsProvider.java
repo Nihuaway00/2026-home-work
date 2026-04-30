@@ -3,7 +3,7 @@ package company.vk.edu.distrib.compute;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import company.vk.edu.distrib.compute.nihuaway00.NihuawayKVServiceFactory;
+import company.vk.edu.distrib.compute.nihuaway00.bootstrap.NihuawayKVServiceFactory;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;

@@ -1,10 +1,8 @@
 package company.vk.edu.distrib.compute;
 
 import module java.base;
-import company.vk.edu.distrib.compute.dummy.DummyKVClusterFactory;
-import company.vk.edu.distrib.compute.dummy.DummyKVServiceFactory;
-import company.vk.edu.distrib.compute.nihuaway00.NihuawayKVClusterFactory;
-import company.vk.edu.distrib.compute.nihuaway00.NihuawayKVServiceFactory;
+import company.vk.edu.distrib.compute.nihuaway00.bootstrap.NihuawayKVClusterFactory;
+import company.vk.edu.distrib.compute.nihuaway00.bootstrap.NihuawayKVServiceFactory;
 import org.slf4j.LoggerFactory;
 
 public class Server {
