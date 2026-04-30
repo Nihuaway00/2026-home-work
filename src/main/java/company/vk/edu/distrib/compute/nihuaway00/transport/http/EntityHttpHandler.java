@@ -4,8 +4,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.replication.InsufficientReplicasException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,12 +13,10 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class EntityHttpHandler implements HttpHandler {
-    private static final Logger log = LoggerFactory.getLogger(EntityHttpHandler.class);
-    private final KVCommandService KVCommandService;
-
+    private final KVCommandService commandService;
 
     public EntityHttpHandler(KVCommandService kvCommandService) {
-        KVCommandService = kvCommandService;
+        commandService = kvCommandService;
     }
 
     @Override
@@ -63,7 +59,7 @@ public class EntityHttpHandler implements HttpHandler {
     private void dispatchByMethod(HttpExchange exchange, String method, String id, int ack) throws IOException {
         switch (method) {
             case "GET" -> {
-                byte[] data = KVCommandService.handleGetEntity(id, ack);
+                byte[] data = commandService.handleGetEntity(id, ack);
                 exchange.sendResponseHeaders(200, data.length);
                 try (OutputStream os = exchange.getResponseBody()) {
                     os.write(data);
@@ -72,12 +68,12 @@ public class EntityHttpHandler implements HttpHandler {
             case "PUT" -> {
                 try (InputStream is = exchange.getRequestBody()) {
                     byte[] data = is.readAllBytes();
-                    KVCommandService.handlePutEntity(id, data, ack);
+                    commandService.handlePutEntity(id, data, ack);
                     exchange.sendResponseHeaders(201, -1);
                 }
             }
             case "DELETE" -> {
-                KVCommandService.handleDeleteEntity(id, ack);
+                commandService.handleDeleteEntity(id, ack);
                 exchange.sendResponseHeaders(202, -1);
                 exchange.close();
             }

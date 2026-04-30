@@ -6,7 +6,6 @@ import company.vk.edu.distrib.compute.nihuaway00.proto.Key;
 import company.vk.edu.distrib.compute.nihuaway00.proto.KeyValue;
 import company.vk.edu.distrib.compute.nihuaway00.proto.ReactorKVServiceGrpc;
 import company.vk.edu.distrib.compute.nihuaway00.proto.Response;
-import company.vk.edu.distrib.compute.nihuaway00.replication.InsufficientReplicasException;
 import io.grpc.Status;
 import reactor.core.publisher.Mono;
 
@@ -16,6 +15,7 @@ public class InternalGrpcService extends ReactorKVServiceGrpc.KVServiceImplBase 
     private final KVCommandService commandService;
 
     public InternalGrpcService(KVCommandService commandService) {
+        super();
         this.commandService = commandService;
     }
 
@@ -32,12 +32,9 @@ public class InternalGrpcService extends ReactorKVServiceGrpc.KVServiceImplBase 
             return Mono.error(Status.NOT_FOUND.asRuntimeException());
         } catch (IllegalArgumentException e) {
             return Mono.error(Status.INVALID_ARGUMENT.asRuntimeException());
-        } catch (InsufficientReplicasException e) {
-            return Mono.error(Status.INTERNAL.asRuntimeException());
         } catch (Exception e) {
             return Mono.error(Status.INTERNAL.asRuntimeException());
         }
-
     }
 
     @Override
@@ -49,8 +46,6 @@ public class InternalGrpcService extends ReactorKVServiceGrpc.KVServiceImplBase 
             return Mono.error(Status.NOT_FOUND.asRuntimeException());
         } catch (IllegalArgumentException e) {
             return Mono.error(Status.INVALID_ARGUMENT.asRuntimeException());
-        } catch (InsufficientReplicasException e) {
-            return Mono.error(Status.INTERNAL.asRuntimeException());
         } catch (Exception e) {
             return Mono.error(Status.INTERNAL.asRuntimeException());
         }
@@ -65,8 +60,6 @@ public class InternalGrpcService extends ReactorKVServiceGrpc.KVServiceImplBase 
             return Mono.error(Status.NOT_FOUND.asRuntimeException());
         } catch (IllegalArgumentException e) {
             return Mono.error(Status.INVALID_ARGUMENT.asRuntimeException());
-        } catch (InsufficientReplicasException e) {
-            return Mono.error(Status.INTERNAL.asRuntimeException());
         } catch (Exception e) {
             return Mono.error(Status.INTERNAL.asRuntimeException());
         }

@@ -7,7 +7,6 @@ public class LocalShardRouter implements ShardRouter {
         this.currentNodeEndpoint = currentNodeEndpoint;
     }
 
-
     @Override
     public <T> T proxyRequest(String targetNodeEndpoint, ShardOperation<T> operation) {
         return null;

@@ -10,10 +10,10 @@ public class KVCommandService {
     private final ShardRouter shardRouter;
     private final InternalNodeClient internalNodeClient;
 
-    public KVCommandService(ReplicaManager replicaManager, ShardRouter shardRouter, InternalNodeClient internalNodeClient) {
+    public KVCommandService(ReplicaManager replicaManager, ShardRouter shardRouter, InternalNodeClient client) {
         this.replicaManager = replicaManager;
         this.shardRouter = shardRouter;
-        this.internalNodeClient = internalNodeClient;
+        this.internalNodeClient = client;
     }
 
     public byte[] handleGetEntity(String id, int ack) {
@@ -36,10 +36,8 @@ public class KVCommandService {
         String target = shardRouter.getResponsibleNode(id);
         if (shardRouter.isLocalNode(target)) {
             replicaManager.put(id, value, ack);
-            return;
         } else {
             internalNodeClient.put(target, id, value, ack);
-            return;
         }
     }
 
@@ -47,10 +45,8 @@ public class KVCommandService {
         String target = shardRouter.getResponsibleNode(id);
         if (shardRouter.isLocalNode(target)) {
             replicaManager.delete(id, ack);
-            return;
         } else {
             internalNodeClient.delete(target, id, ack);
-            return;
         }
     }
 }
