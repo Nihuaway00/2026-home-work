@@ -19,9 +19,15 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
     private HttpServer httpServer;
     private Server grpcServer;
     private final int port;
+    private final int grpcPort;
 
     public NodeServer(int port, KVCommandService commandService) {
+        this(port, port + 1, commandService);
+    }
+
+    public NodeServer(int port, int grpcPort, KVCommandService commandService) {
         this.port = port;
+        this.grpcPort = grpcPort;
         this.commandService = commandService;
     }
 
@@ -32,7 +38,7 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
         }
 
         try {
-            grpcServer = Grpc.newServerBuilderForPort(port + 1, InsecureServerCredentials.create())
+            grpcServer = Grpc.newServerBuilderForPort(grpcPort, InsecureServerCredentials.create())
                     .addService(new InternalGrpcService(commandService))
                     .addService(ProtoReflectionService.newInstance())
                     .build();
