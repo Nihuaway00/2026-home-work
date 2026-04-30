@@ -7,52 +7,16 @@ import company.vk.edu.distrib.compute.nihuaway00.proto.KeyValue;
 import company.vk.edu.distrib.compute.nihuaway00.proto.ReactorKVServiceGrpc;
 import company.vk.edu.distrib.compute.nihuaway00.proto.Response;
 import company.vk.edu.distrib.compute.nihuaway00.replication.InsufficientReplicasException;
-import io.grpc.Grpc;
-import io.grpc.InsecureServerCredentials;
-import io.grpc.Server;
 import io.grpc.Status;
-import io.grpc.protobuf.services.ProtoReflectionService;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.util.NoSuchElementException;
-import java.util.concurrent.TimeUnit;
 
 public class InternalGrpcService extends ReactorKVServiceGrpc.KVServiceImplBase {
     private final KVCommandService commandService;
-    private Server server;
 
     public InternalGrpcService(KVCommandService commandService) {
         this.commandService = commandService;
-    }
-
-    public void newGrpcServer(int port) throws InterruptedException {
-        if (server != null) {
-            server.shutdown();
-            server.awaitTermination(1, TimeUnit.SECONDS);
-        }
-
-        this.server = Grpc.newServerBuilderForPort(port, InsecureServerCredentials.create())
-                .addService(this)
-                .addService(ProtoReflectionService.newInstance())
-                .build();
-
-    }
-
-    public void start() throws IOException {
-        server.start();
-    }
-
-    public void shutdown() {
-        server.shutdown();
-    }
-
-    public boolean isShutdown() {
-        return server.isShutdown();
-    }
-
-    public boolean isTerminated() {
-        return server.isTerminated();
     }
 
     @Override

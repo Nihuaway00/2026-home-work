@@ -5,64 +5,75 @@ import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.transport.http.EntityHttpHandler;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcService;
 import company.vk.edu.distrib.compute.nihuaway00.transport.http.StatusHttpHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.grpc.Grpc;
+import io.grpc.InsecureServerCredentials;
+import io.grpc.Server;
+import io.grpc.protobuf.services.ProtoReflectionService;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedService {
-    private static final Logger log = LoggerFactory.getLogger(NodeServer.class);
-
     private final KVCommandService commandService;
-    private HttpServer server;
-    private InternalGrpcService grpcServer;
-    int port;
+    private HttpServer httpServer;
+    private Server grpcServer;
+    private final int port;
 
     public NodeServer(int port, KVCommandService commandService) {
         this.port = port;
         this.commandService = commandService;
-        this.grpcServer = new InternalGrpcService(commandService);
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
+        if (httpServer != null || grpcServer != null) {
+            return;
+        }
+
         try {
-            InetSocketAddress addr = new InetSocketAddress(port);
-            server = HttpServer.create(addr, 0);
-            server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-            registerContexts();
-            server.start();
-
-            grpcServer.newGrpcServer(port + 1);
+            grpcServer = Grpc.newServerBuilderForPort(port + 1, InsecureServerCredentials.create())
+                    .addService(new InternalGrpcService(commandService))
+                    .addService(ProtoReflectionService.newInstance())
+                    .build();
             grpcServer.start();
+
+            httpServer = HttpServer.create(new InetSocketAddress(port), 0);
+            httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+            registerContexts();
+            httpServer.start();
         } catch (Exception e) {
-            if (log.isErrorEnabled()) {
-                log.error(e.getMessage());
-            }
+            stop();
+            throw new IllegalStateException("Failed to start node on port " + port, e);
         }
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
         if (grpcServer != null) {
-            grpcServer.shutdown();
+            Server serverToStop = grpcServer;
             grpcServer = null;
+            serverToStop.shutdown();
+            try {
+                if (!serverToStop.awaitTermination(10, TimeUnit.SECONDS)) {
+                    serverToStop.shutdownNow();
+                    serverToStop.awaitTermination(10, TimeUnit.SECONDS);
+                }
+            } catch (InterruptedException e) {
+                serverToStop.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
 
-        if (server != null) {
-            server.stop(0);
-            server = null;
-        } else {
-            if (log.isWarnEnabled()) {
-                log.warn("Server is not started");
-            }
+        if (httpServer != null) {
+            httpServer.stop(0);
+            httpServer = null;
         }
     }
 
     private void registerContexts() {
-        server.createContext("/v0/entity", new EntityHttpHandler(commandService));
-        server.createContext("/v0/status", new StatusHttpHandler());
+        httpServer.createContext("/v0/entity", new EntityHttpHandler(commandService));
+        httpServer.createContext("/v0/status", new StatusHttpHandler());
     }
 
     @Override
