@@ -6,6 +6,11 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
@@ -19,6 +24,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
 
     private final String bootstrapServers;
     private final String groupId;
+    private final Path storageFile;
     private final List<AuditEvent> events = new CopyOnWriteArrayList<>();
 
     private volatile boolean running;
@@ -28,6 +34,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
     public AuditService(String bootstrapServers, String groupId) {
         this.bootstrapServers = bootstrapServers;
         this.groupId = groupId;
+        this.storageFile = Path.of("audit-" + groupId + ".log");
     }
 
     @Override
@@ -71,6 +78,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
                 for (var record : records) {
                     AuditEvent event = parse(record.value());
                     if (event != null) {
+                        appendToFile(record.value());
                         events.add(event);
                     }
                 }
@@ -85,6 +93,15 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
     @Override
     public List<AuditEvent> listAuditEntries() {
         return List.copyOf(events);
+    }
+
+    private void appendToFile(String rawJson) {
+        try {
+            Files.writeString(storageFile, rawJson + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     // {"method":"PUT","id":"someId","timestamp":123}
