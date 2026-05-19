@@ -20,7 +20,7 @@ public class SyncAuditSender implements AuditSender {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Audit send interrupted", e);
         } catch (ExecutionException e) {
-            throw new RuntimeException(e.getCause());
+            throw new IllegalStateException("Failed to send audit event", e);
         }
     }
 }

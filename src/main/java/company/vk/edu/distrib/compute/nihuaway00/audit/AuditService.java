@@ -113,7 +113,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
                 }
             }
         } catch (WakeupException e) {
-            if(log.isDebugEnabled()){
+            if (log.isDebugEnabled()) {
                 log.debug("Attempt to stop Audit Service with stop() command");
             }
         } finally {
