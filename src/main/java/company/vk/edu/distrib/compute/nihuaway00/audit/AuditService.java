@@ -7,6 +7,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -20,6 +22,7 @@ import java.util.Properties;
 import java.util.concurrent.*;
 
 public class AuditService implements company.vk.edu.distrib.compute.AuditService {
+    private final Logger log = LoggerFactory.getLogger(AuditService.class);
     private static final String TOPIC = "audit";
     private final String bootstrapServers;
     private final String groupId;
@@ -74,7 +77,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
             assignedLatch.await(10, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            throw new IllegalStateException("AuditService startup interrupted", e);
         }
     }
 
@@ -110,7 +113,9 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
                 }
             }
         } catch (WakeupException e) {
-            // нормальное завершение через stop()
+            if(log.isDebugEnabled()){
+                log.debug("Attempt to stop Audit Service with stop() command");
+            }
         } finally {
             consumer.close();
         }

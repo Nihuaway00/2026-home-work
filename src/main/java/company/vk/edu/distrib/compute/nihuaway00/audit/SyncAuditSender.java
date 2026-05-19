@@ -18,9 +18,9 @@ public class SyncAuditSender implements AuditSender {
             producer.send(event).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Audit send interrupted", e);
         } catch (ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getCause());
         }
     }
 }
