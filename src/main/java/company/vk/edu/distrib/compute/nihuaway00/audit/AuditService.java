@@ -2,7 +2,9 @@ package company.vk.edu.distrib.compute.nihuaway00.audit;
 
 import company.vk.edu.distrib.compute.AuditEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
@@ -12,16 +14,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class AuditService implements company.vk.edu.distrib.compute.AuditService {
     private static final String TOPIC = "audit";
-
     private final String bootstrapServers;
     private final String groupId;
     private final Path storageFile;
@@ -44,15 +43,37 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"); // будет читать с конца топика при первом подключении
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true"); // авто сохранение оффсета
+        // будет читать с конца топика при первом подключении
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        // авто сохранение оффсета
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+
+        // счетчик, чтобы дождаться момента, когда consumer подключиться к партиции
+        CountDownLatch assignedLatch = new CountDownLatch(1);
 
         consumer = new KafkaConsumer<>(props);
-        consumer.subscribe(List.of(TOPIC));
+        consumer.subscribe(List.of(TOPIC), new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                // консьюмеру выдана партиция, значит можно продолжать start()
+                assignedLatch.countDown();
+            }
+        });
         running = true;
 
         executor = Executors.newSingleThreadExecutor();
         executor.submit(this::pollLoop);
+
+        try {
+            assignedLatch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
