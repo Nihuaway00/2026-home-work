@@ -15,11 +15,14 @@ import company.vk.edu.distrib.compute.nihuaway00.cluster.ShardingStrategy;
 import company.vk.edu.distrib.compute.nihuaway00.storage.EntityDao;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.GrpcChannelRegistry;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcClient;
+import company.vk.edu.distrib.compute.nihuaway00.transport.kafka.KafkaEventProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 public class ServiceFactory extends company.vk.edu.distrib.compute.KVServiceFactory {
     private final ShardingStrategy shardingStrategy;

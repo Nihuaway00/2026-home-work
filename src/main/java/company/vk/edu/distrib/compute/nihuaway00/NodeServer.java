@@ -1,21 +1,34 @@
 package company.vk.edu.distrib.compute.nihuaway00;
 
 import com.sun.net.httpserver.HttpServer;
+import company.vk.edu.distrib.compute.AuditableKVService;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
+import company.vk.edu.distrib.compute.nihuaway00.audit.AsyncAuditSender;
+import company.vk.edu.distrib.compute.nihuaway00.audit.AuditSender;
+import company.vk.edu.distrib.compute.nihuaway00.audit.SyncAuditSender;
 import company.vk.edu.distrib.compute.nihuaway00.transport.http.EntityHttpHandler;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcService;
 import company.vk.edu.distrib.compute.nihuaway00.transport.http.StatusHttpHandler;
+import company.vk.edu.distrib.compute.nihuaway00.transport.kafka.KafkaEventProducer;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.net.InetSocketAddress;
+import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedService {
+public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedService, AuditableKVService {
     private final KVCommandService commandService;
+
+    private final Properties kafkaProducerProps = new Properties();
+    private KafkaEventProducer kafkaEventProducer;
+    private AuditSender auditSender;
+
     private HttpServer httpServer;
     private Server grpcServer;
     private final int port;
@@ -44,6 +57,14 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
                     .build();
             grpcServer.start();
 
+            kafkaProducerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            kafkaProducerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            kafkaEventProducer = new KafkaEventProducer(kafkaProducerProps);
+
+            if(auditSender == null){
+                auditSender = new SyncAuditSender(kafkaEventProducer);
+            }
+
             httpServer = HttpServer.create(new InetSocketAddress(port), 0);
             httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
             registerContexts();
@@ -71,6 +92,11 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
             }
         }
 
+        if (kafkaEventProducer != null) {
+            kafkaEventProducer.close();
+            kafkaEventProducer = null;
+        }
+
         if (httpServer != null) {
             httpServer.stop(0);
             httpServer = null;
@@ -78,7 +104,7 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
     }
 
     private void registerContexts() {
-        httpServer.createContext("/v0/entity", new EntityHttpHandler(commandService));
+        httpServer.createContext("/v0/entity", new EntityHttpHandler(commandService, auditSender));
         httpServer.createContext("/v0/status", new StatusHttpHandler());
     }
 
@@ -100,5 +126,21 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
     @Override
     public void enableReplica(int nodeId) {
         commandService.replicaManager.enableReplica(nodeId);
+    }
+
+    @Override
+    public void setBootstrapServers(String bootstrapServers) {
+        kafkaProducerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    }
+
+    @Override
+    public void setAsync(boolean enabled) {
+        if (enabled) {
+            kafkaProducerProps.put(ProducerConfig.ACKS_CONFIG, "0");
+            this.auditSender = new AsyncAuditSender(kafkaEventProducer);
+        } else {
+            kafkaProducerProps.put(ProducerConfig.ACKS_CONFIG, "1");
+            this.auditSender = new SyncAuditSender(kafkaEventProducer);
+        }
     }
 }

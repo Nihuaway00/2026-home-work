@@ -2,8 +2,12 @@ package company.vk.edu.distrib.compute.nihuaway00.transport.http;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import company.vk.edu.distrib.compute.AuditEvent;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
+import company.vk.edu.distrib.compute.nihuaway00.audit.AuditSender;
 import company.vk.edu.distrib.compute.nihuaway00.replication.InsufficientReplicasException;
+import company.vk.edu.distrib.compute.nihuaway00.transport.kafka.KafkaEventProducer;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,12 +15,15 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.Future;
 
 public class EntityHttpHandler implements HttpHandler {
     private final KVCommandService commandService;
+    private final AuditSender auditSender;
 
-    public EntityHttpHandler(KVCommandService kvCommandService) {
+    public EntityHttpHandler(KVCommandService kvCommandService, AuditSender auditSender) {
         commandService = kvCommandService;
+        this.auditSender = auditSender;
     }
 
     @Override
@@ -25,6 +32,10 @@ public class EntityHttpHandler implements HttpHandler {
         URI uri = exchange.getRequestURI();
         Map<String, String> params = HttpUtils.parseQuery(uri.getQuery());
         String id = params.get("id");
+
+        if (auditSender != null) {
+            auditSender.send(new AuditEvent(method, id, System.currentTimeMillis()));
+        }
 
         if (id == null || id.isBlank()) {
             HttpUtils.sendError(exchange, 400, "id is required");
