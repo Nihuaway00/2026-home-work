@@ -5,6 +5,7 @@ import company.vk.edu.distrib.compute.AuditableKVService;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.audit.AsyncAuditSender;
 import company.vk.edu.distrib.compute.nihuaway00.audit.AuditSender;
+import company.vk.edu.distrib.compute.nihuaway00.audit.NoOpAuditSender;
 import company.vk.edu.distrib.compute.nihuaway00.audit.SyncAuditSender;
 import company.vk.edu.distrib.compute.nihuaway00.transport.http.EntityHttpHandler;
 import company.vk.edu.distrib.compute.nihuaway00.transport.grpc.InternalGrpcService;
@@ -27,7 +28,8 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
 
     private final Properties kafkaProducerProps = new Properties();
     private KafkaEventProducer kafkaEventProducer;
-    private AuditSender auditSender;
+    private AuditSender auditSender = new NoOpAuditSender();
+    private boolean isAuditAsync;
 
     private HttpServer httpServer;
     private Server grpcServer;
@@ -56,14 +58,6 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
                     .addService(ProtoReflectionService.newInstance())
                     .build();
             grpcServer.start();
-
-            kafkaProducerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            kafkaProducerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            kafkaEventProducer = new KafkaEventProducer(kafkaProducerProps);
-
-            if(auditSender == null){
-                auditSender = new SyncAuditSender(kafkaEventProducer);
-            }
 
             httpServer = HttpServer.create(new InetSocketAddress(port), 0);
             httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
@@ -131,16 +125,19 @@ public class NodeServer implements company.vk.edu.distrib.compute.ReplicatedServ
     @Override
     public void setBootstrapServers(String bootstrapServers) {
         kafkaProducerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        kafkaProducerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        kafkaProducerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        KafkaEventProducer producer = new KafkaEventProducer(kafkaProducerProps);
+        auditSender = isAuditAsync ? new AsyncAuditSender(producer) : new SyncAuditSender(producer);
     }
 
     @Override
     public void setAsync(boolean enabled) {
-        if (enabled) {
-            kafkaProducerProps.put(ProducerConfig.ACKS_CONFIG, "0");
-            this.auditSender = new AsyncAuditSender(kafkaEventProducer);
-        } else {
-            kafkaProducerProps.put(ProducerConfig.ACKS_CONFIG, "1");
-            this.auditSender = new SyncAuditSender(kafkaEventProducer);
+        isAuditAsync = enabled;
+        if (kafkaEventProducer != null) {
+            auditSender = enabled ? new AsyncAuditSender(kafkaEventProducer)
+                    : new SyncAuditSender(kafkaEventProducer);
         }
     }
 }
