@@ -9,7 +9,7 @@ import java.util.Properties;
 import java.util.concurrent.Future;
 
 public class KafkaEventProducer {
-    private final String TOPIC = "audit";
+    private static final String TOPIC = "audit";
     private final KafkaProducer<String, String> producer;
 
     public KafkaEventProducer(Properties props) {
@@ -25,7 +25,7 @@ public class KafkaEventProducer {
         return producer.send(new ProducerRecord<>(TOPIC, json));
     }
 
-    public void close(){
+    public void close() {
         producer.close();
     }
 }

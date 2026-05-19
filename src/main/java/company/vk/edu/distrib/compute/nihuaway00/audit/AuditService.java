@@ -26,6 +26,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
     private final Path storageFile;
     private final List<AuditEvent> events = new CopyOnWriteArrayList<>();
 
+    @SuppressWarnings("PMD.AvoidUsingVolatile")
     private volatile boolean running;
     private KafkaConsumer<String, String> consumer;
     private ExecutorService executor;
@@ -55,6 +56,7 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
         consumer.subscribe(List.of(TOPIC), new ConsumerRebalanceListener() {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                // отзыв партиции не требует действий
             }
 
             @Override
@@ -92,7 +94,10 @@ public class AuditService implements company.vk.edu.distrib.compute.AuditService
         }
     }
 
+    @SuppressWarnings("PMD.UseTryWithResources")
     private void pollLoop() {
+        // stop() вызывает consumer.wakeup() из другого потока, что останавливает консьюмера;
+        // try-with-resources здесь неприменим без разрушения этой межпоточной зависимости
         try {
             while (running) {
                 var records = consumer.poll(Duration.ofMillis(200));

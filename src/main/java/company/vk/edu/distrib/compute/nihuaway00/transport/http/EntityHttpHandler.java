@@ -6,8 +6,6 @@ import company.vk.edu.distrib.compute.AuditEvent;
 import company.vk.edu.distrib.compute.nihuaway00.app.KVCommandService;
 import company.vk.edu.distrib.compute.nihuaway00.audit.AuditSender;
 import company.vk.edu.distrib.compute.nihuaway00.replication.InsufficientReplicasException;
-import company.vk.edu.distrib.compute.nihuaway00.transport.kafka.KafkaEventProducer;
-import org.apache.kafka.clients.producer.RecordMetadata;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +13,6 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.Future;
 
 public class EntityHttpHandler implements HttpHandler {
     private final KVCommandService commandService;
