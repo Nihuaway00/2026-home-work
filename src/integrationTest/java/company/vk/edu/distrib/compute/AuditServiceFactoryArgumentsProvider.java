@@ -15,8 +15,12 @@ import static org.junit.platform.commons.util.ReflectionUtils.newInstance;
 public class AuditServiceFactoryArgumentsProvider implements ArgumentsProvider {
     private final Set<ImmutablePair<Class<? extends KVServiceFactory>, Class<? extends AuditServiceFactory>>>
             factories = Set.of(
-    //        ImmutablePair.of(DummyKVServiceFactory.class, AuditServiceFactory.class)
-    );
+                ImmutablePair.of(
+                        company.vk.edu.distrib.compute.nihuaway00.bootstrap.ServiceFactory.class,
+                        company.vk.edu.distrib.compute.nihuaway00.bootstrap.AuditServiceFactory.class
+                )
+            //    ImmutablePair.of(DummyKVServiceFactory.class, AuditServiceFactory.class)
+            );
 
     @Override
     @NonNull
